@@ -1,0 +1,239 @@
+# General
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.log
+*.tmp
+*.temp
+.env*
+!.env.example
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Core - Django/Python
+core/__pycache__/
+core/*.py[cod]
+core/*$py.class
+core/*.so
+core/.Python
+core/build/
+core/develop-eggs/
+core/dist/
+core/downloads/
+core/eggs/
+core/.eggs/
+core/lib/
+core/lib64/
+core/parts/
+core/sdist/
+core/var/
+core/wheels/
+core/*.egg-info/
+core/.installed.cfg
+core/*.egg
+core/MANIFEST
+core/.pytest_cache/
+core/.coverage
+core/htmlcov/
+core/.tox/
+core/.nox/
+core/.coverage.*
+core/.cache
+core/nosetests.xml
+core/coverage.xml
+core/db.sqlite3
+core/db.sqlite3-journal
+core/media/
+core/static/
+core/staticfiles/
+core/celerybeat-schedule
+core/celerybeat.pid
+core/migrations/*
+!core/migrations/__init__.py
+core/*.log
+core/local_settings.py
+core/.env
+core/venv/
+core/ve/
+core/ENV/
+core/env/
+core/.venv/
+
+# Frontend - Node.js/Next.js
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+frontend/coverage/
+frontend/.nyc_output
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.build/
+frontend/.swc/
+frontend/.cache/
+frontend/.parcel-cache/
+frontend/dist/
+frontend/*.tgz
+frontend/*.tar.gz
+frontend/.yarn-integrity
+frontend/.env*.local
+frontend/.env
+frontend/.vercel
+frontend/*.log
+frontend/.DS_Store
+frontend/Thumbs.db
+
+# Frontend - TypeScript
+frontend/*.tsbuildinfo
+
+# Frontend - ESLint
+frontend/.eslintcache
+
+# Frontend - Storybook
+frontend/.storybook/public
+
+# USSD - Go
+ussd-africa-talking/vendor/
+ussd-africa-talking/*.exe
+ussd-africa-talking/*.exe~
+ussd-africa-talking/*.dll
+ussd-africa-talking/*.so
+ussd-africa-talking/*.dylib
+ussd-africa-talking/*.test
+ussd-africa-talking/*.out
+ussd-africa-talking/go.work
+ussd-africa-talking/go.work.sum
+ussd-africa-talking/.env
+ussd-africa-talking/ve/
+
+# Queue Scheduler - Go
+queue-scheduler/vendor/
+queue-scheduler/*.exe
+queue-scheduler/*.exe~
+queue-scheduler/*.dll
+queue-scheduler/*.so
+queue-scheduler/*.dylib
+queue-scheduler/*.test
+queue-scheduler/*.out
+queue-scheduler/go.work
+queue-scheduler/go.work.sum
+queue-scheduler/.env
+
+# Dependency directories
+**/node_modules/
+**/__pycache__/
+**/vendor/
+**/ve/
+**/venv/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor backup files
+*~
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local development files
+*.local
+.local
