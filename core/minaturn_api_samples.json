@@ -1,0 +1,74 @@
+{
+	"info": {
+		"_postman_id": "273b1a11-5cf3-4bc5-9929-ccdcca157757",
+		"name": "Minaturn",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "27905631"
+	},
+	"item": [
+		{
+			"name": "join a queue",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"msisdn\": \"27831234567\",\n    \"queue_id\": \"eee96810-2c23-44e5-935e-aec4bba6512c\",\n    \"joined_at\": \"2025-08-17T12:00:00Z\"\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/queue/join/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"queue",
+						"join",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "check position",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/queue/eee96810-2c23-44e5-935e-aec4bba6512c/position/27831234567/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"queue",
+						"eee96810-2c23-44e5-935e-aec4bba6512c",
+						"position",
+						"27831234567",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
