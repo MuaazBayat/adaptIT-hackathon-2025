@@ -43,22 +43,39 @@ class RequestLoggingMiddleware:
                 extra={"request_path": request.path}
             )
             raise
-            
+
+        # Helper to safely get response size
+        def get_response_size(resp):
+            try:
+                return len(resp.content)
+            except AttributeError:
+                # Streaming responses (WhiteNoise) don't have .content
+                return None
+
+        # Helper to safely get snippet of response
+        def get_response_snippet(resp, n=200):
+            try:
+                return resp.content[:n]
+            except AttributeError:
+                return b"<streaming response>"
+
         # Log response
+        size = get_response_size(response)
         logger.info(
             f"Response: {response.status_code} | "
             f"Path: {request.path} | "
-            f"Size: {len(response.content)} bytes"
+            f"Size: {size if size is not None else 'streaming/unknown'} bytes"
         )
-        
+
         # Log 4xx and 5xx responses with more detail
         if response.status_code >= 400:
+            snippet = get_response_snippet(response)
             logger.warning(
                 f"HTTP {response.status_code}: {request.method} {request.path} | "
-                f"Response: {response.content[:200]}",
+                f"Response: {snippet}",
                 extra={"request_path": request.path}
             )
-            
+
         return response
     
     def get_client_ip(self, request):
