@@ -6,7 +6,8 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter } 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Settings, ArrowLeft, Users, Clock, CheckCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { Settings, ArrowLeft, Users, Clock, CheckCircle, MessageCircle, Loader2 } from 'lucide-react'
 import { authService } from '@/lib/auth'
 import { queueService, Queue, QueueEntry } from '@/lib/queue-service'
 import { DroppableColumn } from '@/components/queue/droppable-column'
@@ -28,6 +29,7 @@ export default function QueueManagementPage() {
   const [loading, setLoading] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [activeEntry, setActiveEntry] = useState<QueueEntry | null>(null)
+  const [sendingAlert, setSendingAlert] = useState(false)
 
   useEffect(() => {
     const user = authService.getCurrentUser()
@@ -117,6 +119,40 @@ export default function QueueManagementPage() {
     return entries.filter(entry => entry.status === status && !entry.left)
   }
 
+  const handleSendAlert = async () => {
+    const activeEntries = entries.filter(e => !e.left)
+    if (activeEntries.length === 0) {
+      toast.error('No active entries in queue to send alerts to')
+      return
+    }
+
+    setSendingAlert(true)
+    
+    try {
+      const result = await queueService.sendAlert()
+      
+      if (result.success) {
+        const totalQueues = result.data?.queues_processed || 0
+        let totalMessages = 0
+        
+        if (result.data?.results) {
+          totalMessages = result.data.results.reduce((sum: number, queueResult: any) => {
+            return sum + (queueResult.messages_sent?.length || 0)
+          }, 0)
+        }
+        
+        toast.success(`Alert sent successfully! ${totalMessages} WhatsApp messages sent across ${totalQueues} queue(s).`)
+      } else {
+        toast.error(`Failed to send alert: ${result.error}`)
+      }
+    } catch (error) {
+      toast.error('Failed to send alert. Please try again.')
+      console.error('Send alert error:', error)
+    } finally {
+      setSendingAlert(false)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'served': return 'bg-chart-2/20 text-chart-2 border-2 border-chart-2'
@@ -143,20 +179,51 @@ export default function QueueManagementPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b-2 border-border bg-card shadow">
+      {/* Navbar */}
+      <nav className="border-b-2 border-border bg-card shadow">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-2xl font-bold font-sans uppercase cursor-pointer" onClick={() => router.push('/')}>minaturn</h1>
+              <div className="flex items-center space-x-6">
+                <button 
+                  onClick={() => router.push('/')}
+                  className="text-sm text-foreground hover:text-primary transition-colors font-medium"
+                >
+                  Dashboard
+                </button>
+                <button 
+                  onClick={() => router.push('/manage')}
+                  className="text-sm text-foreground hover:text-primary transition-colors font-medium"
+                >
+                  Manage Queues
+                </button>
+                <button 
+                  onClick={() => window.open('/display', '_blank')}
+                  className="text-sm text-foreground hover:text-primary transition-colors font-medium"
+                >
+                  Display
+                </button>
+              </div>
+            </div>
+            <Button
+              onClick={() => router.push('/')}
+              variant="outline"
+              size="sm"
+              className="border-2 border-border text-foreground hover:bg-secondary font-mono font-bold"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              BACK
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Queue Header */}
+      <div className="border-b border-border bg-card/50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => router.push('/')}
-                variant="outline"
-                size="sm"
-                className="border-2 border-border text-foreground hover:bg-secondary font-mono font-bold"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                BACK
-              </Button>
               <div>
                 <h1 className="text-2xl font-bold font-sans">{queue.name}</h1>
                 <p className="text-muted-foreground text-sm">{queue.description || 'No description'}</p>
@@ -165,16 +232,34 @@ export default function QueueManagementPage() {
                 {entries.filter(e => !e.left).length} ACTIVE
               </Badge>
             </div>
-            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="border-2 border-border text-foreground hover:bg-secondary font-mono font-bold uppercase"
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  SETTINGS
-                </Button>
-              </DialogTrigger>
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={handleSendAlert}
+                disabled={sendingAlert || entries.filter(e => !e.left).length === 0}
+                className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 border-2 border-border shadow font-mono font-bold uppercase"
+              >
+                {sendingAlert ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    SENDING...
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    SEND ALERT
+                  </>
+                )}
+              </Button>
+              <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="border-2 border-border text-foreground hover:bg-secondary font-mono font-bold uppercase"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    SETTINGS
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="bg-card border-2 border-border text-card-foreground">
                 <DialogHeader>
                   <DialogTitle className="font-sans">Queue Settings</DialogTitle>
@@ -200,7 +285,8 @@ export default function QueueManagementPage() {
                   </div>
                 </div>
               </DialogContent>
-            </Dialog>
+              </Dialog>
+            </div>
           </div>
         </div>
       </div>

@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from loguru import logger
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,6 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'minaturn.middleware.RequestLoggingMiddleware',  # Add request logging
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -165,3 +168,75 @@ CORS_ALLOW_HEADERS = [
 # WhatsApp Business API Configuration
 WHATSAPP_API_URL = os.getenv('WHATSAPP_API_URL', 'https://graph.facebook.com/v23.0/228390687031431/messages')
 WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+
+# Configure Loguru
+logger.remove()  # Remove default handler
+
+# Add colorized console output for development
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    level="DEBUG" if DEBUG else "INFO",
+)
+
+# Add file logging for debugging 404s and other issues
+logs_dir = BASE_DIR / "logs"
+logs_dir.mkdir(exist_ok=True)
+
+logger.add(
+    logs_dir / "minaturn.log",
+    rotation="10 MB",
+    retention="30 days",
+    level="DEBUG",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
+)
+
+# Add separate error log for quick debugging
+logger.add(
+    logs_dir / "errors.log", 
+    rotation="5 MB",
+    retention="15 days",
+    level="ERROR",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {extra[request_path]} | {message}",
+)
+
+# Configure Django logging to use loguru
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "loguru": {
+            "class": "logging.StreamHandler",
+            "stream": sys.stdout,
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["loguru"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["loguru"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["loguru"], 
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["loguru"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

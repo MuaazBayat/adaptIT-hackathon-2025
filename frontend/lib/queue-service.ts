@@ -154,6 +154,26 @@ class QueueServiceImpl {
       return false
     }
   }
+
+  async sendAlert(): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const response = await this.fetchWithAuth(`${API_BASE}/alert/`, {
+        method: 'POST',
+        body: JSON.stringify({}), // Credentials are added by fetchWithAuth
+      })
+
+      const data = await response.json()
+      
+      if (response.ok) {
+        return { success: true, data }
+      } else {
+        return { success: false, error: data.error || 'Failed to send alerts' }
+      }
+    } catch (error) {
+      console.error('Error sending alerts:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 }
 
 export const queueService = new QueueServiceImpl()

@@ -36,4 +36,6 @@ urlpatterns = [
     path("queues/all/", views.all_queues_with_entries, name="all_queues_with_entries"),
     # Alert endpoint
     path("alert/", views.alert, name="alert"),
+    # USSD endpoint
+    path("ussd/callback/", views.ussd_callback, name="ussd_callback"),
 ]

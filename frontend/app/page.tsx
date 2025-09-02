@@ -13,7 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Plus, Users, Calendar, Trash2, Copy, Sparkles, LogOut } from 'lucide-react'
+import { Plus, Users, Calendar, Trash2, Copy, Sparkles, LogOut, MessageCircle, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
@@ -26,6 +27,7 @@ export default function Home() {
   const [newQueueName, setNewQueueName] = useState('')
   const [newQueueDescription, setNewQueueDescription] = useState('')
   const [creating, setCreating] = useState(false)
+  const [sendingAlert, setSendingAlert] = useState(false)
 
   useEffect(() => {
     const currentUser = authService.getCurrentUser()
@@ -105,6 +107,43 @@ export default function Home() {
     navigator.clipboard.writeText(text)
   }
 
+  const handleSendAlert = async () => {
+    const totalActiveEntries = queues.reduce((total, queue) => {
+      return total + (queue.entries?.filter(e => !e.left).length || 0)
+    }, 0)
+
+    if (totalActiveEntries === 0) {
+      toast.error('No active entries in any queues to send alerts to')
+      return
+    }
+
+    setSendingAlert(true)
+    
+    try {
+      const result = await queueService.sendAlert()
+      
+      if (result.success) {
+        const totalQueues = result.data?.queues_processed || 0
+        let totalMessages = 0
+        
+        if (result.data?.results) {
+          totalMessages = result.data.results.reduce((sum: number, queueResult: any) => {
+            return sum + (queueResult.messages_sent?.length || 0)
+          }, 0)
+        }
+        
+        toast.success(`Alert sent successfully! ${totalMessages} WhatsApp messages sent across ${totalQueues} queue(s).`)
+      } else {
+        toast.error(`Failed to send alert: ${result.error}`)
+      }
+    } catch (error) {
+      toast.error('Failed to send alert. Please try again.')
+      console.error('Send alert error:', error)
+    } finally {
+      setSendingAlert(false)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'served': return 'bg-chart-2/20 text-chart-2 border-2 border-chart-2'
@@ -135,11 +174,26 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold font-sans uppercase">minaturn</h1>
+              <h1 className="text-2xl font-bold font-sans uppercase cursor-pointer" onClick={() => router.push('/')}>minaturn</h1>
               <div className="flex items-center space-x-6">
-                <span className="text-sm text-muted-foreground">Dashboard</span>
-                <span className="text-sm text-muted-foreground">Analytics</span>
-                <span className="text-sm text-muted-foreground">Settings</span>
+                <button 
+                  onClick={() => router.push('/')}
+                  className="text-sm text-foreground hover:text-primary transition-colors font-medium"
+                >
+                  Dashboard
+                </button>
+                <button 
+                  onClick={() => router.push('/manage')}
+                  className="text-sm text-foreground hover:text-primary transition-colors font-medium"
+                >
+                  Manage Queues
+                </button>
+                <button 
+                  onClick={() => window.open('/display', '_blank')}
+                  className="text-sm text-foreground hover:text-primary transition-colors font-medium"
+                >
+                  Display
+                </button>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -161,8 +215,8 @@ export default function Home() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
 
-        {/* Create Queue Button */}
-        <div className="mb-8">
+        {/* Action Buttons */}
+        <div className="mb-8 flex items-center space-x-4">
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90 border-2 border-border shadow font-mono font-bold uppercase tracking-wider">
@@ -220,6 +274,26 @@ export default function Home() {
               </form>
             </DialogContent>
           </Dialog>
+          
+          {queues.length > 0 && (
+            <Button
+              onClick={handleSendAlert}
+              disabled={sendingAlert || queues.every(q => !q.entries?.some(e => !e.left))}
+              className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 border-2 border-border shadow font-mono font-bold uppercase tracking-wider"
+            >
+              {sendingAlert ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  SENDING...
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  SEND ALERT TO ALL
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Queues Grid */}

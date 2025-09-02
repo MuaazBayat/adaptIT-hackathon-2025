@@ -1,6 +1,6 @@
 import json
 import requests
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.conf import settings
 from .models import Queue, QueueEntry
+from loguru import logger
 
 def get_user_from_credentials(username, password):
     """Helper function to get user from username/password"""
@@ -441,3 +442,246 @@ def alert(request):
         return JsonResponse({"error": "Invalid JSON"}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "GET"])
+def ussd_callback(request):
+    """
+    USSD callback endpoint for Africa's Talking integration.
+    Provides queue management functionality via USSD.
+    """
+    logger.info(f"USSD callback received - Method: {request.method}, Path: {request.path}")
+    logger.debug(f"Request headers: {dict(request.headers)}")
+    logger.debug(f"Request body: {request.body}")
+    logger.debug(f"Request GET params: {dict(request.GET)}")
+    logger.debug(f"Request POST params: {dict(request.POST)}")
+    
+    # Read USSD parameters from POST or GET
+    _session_id = request.POST.get("sessionId") or request.GET.get("sessionId")
+    _service_code = request.POST.get("serviceCode") or request.GET.get("serviceCode")
+    phone_number = request.POST.get("phoneNumber") or request.GET.get("phoneNumber")
+    text = request.POST.get("text", "") or request.GET.get("text", "")
+    
+    logger.info(f"USSD params - Phone: {phone_number}, Text: '{text}', Session: {_session_id}")
+    
+    if not phone_number:
+        logger.error("USSD callback missing phone number")
+        return HttpResponse("END Error: Phone number not provided")
+    
+    # Clean phone number (remove + if present)
+    msisdn = phone_number.lstrip('+')
+    
+    try:
+        if text == '':
+            # Main menu
+            response = "CON Welcome to MinaTurn Queue System\n"
+            response += "1. Join a Queue\n"
+            response += "2. Check My Status\n" 
+            response += "3. Leave Queue\n"
+            response += "4. List Available Queues"
+            
+        elif text == '1':
+            # Show available queues
+            queues = Queue.objects.filter(owner__isnull=False)[:9]  # Limit to 9 for USSD
+            if not queues:
+                response = "END No queues available at the moment"
+            else:
+                response = "CON Select a queue to join:\n"
+                for i, queue in enumerate(queues, 1):
+                    response += f"{i}. {queue.name}\n"
+                # Store queues in session for reference (simplified approach)
+                
+        elif text.startswith('1*') and len(text.split('*')) == 2:
+            # User selected a queue to join
+            try:
+                queue_index = int(text.split('*')[1]) - 1
+                queues = Queue.objects.filter(owner__isnull=False)[:9]
+                
+                if 0 <= queue_index < len(queues):
+                    queue = queues[queue_index]
+                    
+                    # Check if user is already in this queue
+                    existing_entry = QueueEntry.objects.filter(
+                        queue=queue, msisdn=msisdn, left=False
+                    ).first()
+                    
+                    if existing_entry:
+                        position = calculate_queue_position(queue.id, msisdn)
+                        response = f"END You're already in {queue.name}.\n"
+                        response += f"Position: {position}\n"
+                        response += f"Status: {existing_entry.status}"
+                    else:
+                        # Join the queue
+                        entry = QueueEntry.objects.create(
+                            msisdn=msisdn,
+                            queue=queue,
+                            left=False
+                        )
+                        position = calculate_queue_position(queue.id, msisdn)
+                        avg_time = calculate_average_processing_time(queue.id)
+                        
+                        response = f"END Successfully joined {queue.name}!\n"
+                        response += f"Position: {position}\n"
+                        
+                        if avg_time > 0:
+                            est_wait = int((position - 1) * (avg_time / 60))
+                            response += f"Estimated wait: {est_wait} minutes"
+                        else:
+                            response += "Wait time: To be determined"
+                else:
+                    response = "END Invalid queue selection"
+            except (ValueError, IndexError):
+                response = "END Invalid selection"
+                
+        elif text == '2':
+            # Check status - show all active queue entries for this user
+            active_entries = QueueEntry.objects.filter(msisdn=msisdn, left=False)
+            
+            if not active_entries:
+                response = "END You are not in any queues"
+            elif active_entries.count() == 1:
+                # Single queue entry
+                entry = active_entries.first()
+                position = calculate_queue_position(entry.queue.id, msisdn)
+                avg_time = calculate_average_processing_time(entry.queue.id)
+                
+                response = f"END Queue: {entry.queue.name}\n"
+                response += f"Position: {position}\n"
+                response += f"Status: {entry.status.replace('_', ' ').title()}\n"
+                
+                if avg_time > 0 and position > 0:
+                    est_wait = int((position - 1) * (avg_time / 60))
+                    response += f"Est. wait: {est_wait} min"
+                else:
+                    response += "Wait time: TBD"
+            else:
+                # Multiple queue entries - show selection menu
+                response = "CON You're in multiple queues. Select one:\n"
+                for i, entry in enumerate(active_entries, 1):
+                    response += f"{i}. {entry.queue.name}\n"
+                    
+        elif text.startswith('2*') and len(text.split('*')) == 2:
+            # User selected which queue status to check
+            try:
+                entry_index = int(text.split('*')[1]) - 1
+                active_entries = QueueEntry.objects.filter(msisdn=msisdn, left=False)
+                
+                if 0 <= entry_index < active_entries.count():
+                    entry = active_entries[entry_index]
+                    position = calculate_queue_position(entry.queue.id, msisdn)
+                    avg_time = calculate_average_processing_time(entry.queue.id)
+                    
+                    response = f"END Queue: {entry.queue.name}\n"
+                    response += f"Position: {position}\n"
+                    response += f"Status: {entry.status.replace('_', ' ').title()}\n"
+                    
+                    if avg_time > 0 and position > 0:
+                        est_wait = int((position - 1) * (avg_time / 60))
+                        response += f"Est. wait: {est_wait} min"
+                    else:
+                        response += "Wait time: TBD"
+                else:
+                    response = "END Invalid selection"
+            except (ValueError, IndexError):
+                response = "END Invalid selection"
+                
+        elif text == '3':
+            # Leave queue - show active queues
+            active_entries = QueueEntry.objects.filter(msisdn=msisdn, left=False)
+            logger.debug(f"User {msisdn} trying to leave queue. Found {active_entries.count()} active entries")
+            
+            if not active_entries:
+                response = "END You are not in any queues"
+            elif active_entries.count() == 1:
+                # Single queue - confirm leave
+                entry = active_entries.first()
+                response = f"CON Leave {entry.queue.name}?\n"
+                response += "1. Yes, leave queue\n"
+                response += "2. No, stay in queue"
+            else:
+                # Multiple queues - show selection
+                response = "CON Select queue to leave:\n"
+                for i, entry in enumerate(active_entries, 1):
+                    response += f"{i}. {entry.queue.name}\n"
+                    
+        elif text == '3*1':
+            # Confirm leave single queue (Yes)
+            active_entries = QueueEntry.objects.filter(msisdn=msisdn, left=False)
+            logger.debug(f"User {msisdn} confirmed leave queue. Found {active_entries.count()} active entries")
+            if active_entries.count() == 1:
+                entry = active_entries.first()
+                entry.left = True
+                entry.save()
+                logger.info(f"User {msisdn} successfully left queue {entry.queue.name}")
+                response = f"END Successfully left {entry.queue.name}"
+            else:
+                response = "END Error: Queue not found"
+                
+        elif text == '3*2':
+            # Cancel leave single queue (No)
+            logger.debug(f"User {msisdn} cancelled leaving queue")
+            response = "END Cancelled. You remain in the queue."
+            
+        elif text.startswith('3*') and len(text.split('*')) == 2 and text not in ['3*1', '3*2']:
+            # User selected which queue to leave (for multiple queues)
+            try:
+                entry_index = int(text.split('*')[1]) - 1
+                active_entries = QueueEntry.objects.filter(msisdn=msisdn, left=False)
+                logger.debug(f"User {msisdn} selected queue index {entry_index} to leave. Total entries: {active_entries.count()}")
+                
+                if 0 <= entry_index < active_entries.count():
+                    entry = list(active_entries)[entry_index]  # Convert queryset to list for indexing
+                    response = f"CON Leave {entry.queue.name}?\n"
+                    response += "1. Yes, leave queue\n"
+                    response += "2. No, stay in queue"
+                else:
+                    response = "END Invalid selection"
+            except (ValueError, IndexError):
+                logger.error(f"Error parsing queue selection for user {msisdn}, text: {text}")
+                response = "END Invalid selection"
+                
+        elif text.startswith('3*') and len(text.split('*')) == 3:
+            # Handle leave confirmation for specific queue
+            try:
+                entry_index = int(text.split('*')[1]) - 1
+                choice = text.split('*')[2]
+                active_entries = QueueEntry.objects.filter(msisdn=msisdn, left=False)
+                logger.debug(f"User {msisdn} confirming leave queue {entry_index}, choice: {choice}")
+                
+                if choice == '1' and 0 <= entry_index < active_entries.count():
+                    entry = list(active_entries)[entry_index]  # Convert queryset to list for indexing
+                    entry.left = True
+                    entry.save()
+                    logger.info(f"User {msisdn} successfully left queue {entry.queue.name}")
+                    response = f"END Successfully left {entry.queue.name}"
+                elif choice == '2':
+                    response = "END Cancelled. You remain in the queue."
+                else:
+                    response = "END Invalid selection"
+            except (ValueError, IndexError):
+                logger.error(f"Error processing leave confirmation for user {msisdn}, text: {text}")
+                response = "END Invalid selection"
+                
+        elif text == '4':
+            # List available queues with info
+            queues = Queue.objects.filter(owner__isnull=False)[:5]  # Limit for USSD display
+            logger.debug(f"User {msisdn} requested queue list. Found {queues.count()} queues")
+            if not queues:
+                response = "END No queues available"
+            else:
+                response = "END Available Queues:\n"
+                for queue in queues:
+                    count = QueueEntry.objects.filter(queue=queue, left=False).count()
+                    response += f"{queue.name}: {count} people\n"
+                logger.debug(f"List queues response prepared for user {msisdn}: {len(response)} chars")
+                    
+        else:
+            response = "END Invalid option. Please try again."
+            
+    except Exception as e:
+        logger.error(f"USSD callback error for {phone_number}, text '{text}': {str(e)}", extra={"request_path": request.path})
+        response = f"END Error: {str(e)[:50]}..."  # Truncate error for USSD
+        
+    logger.info(f"USSD response for {phone_number}: {response[:100]}...")
+    return HttpResponse(response)

@@ -3,3 +3,5 @@ minaturn/__pycache__/
 minaturn/minaturn/__pycache__/
 .env
 .env*
+*logs/
+/minaturn/logs
