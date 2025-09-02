@@ -33,7 +33,7 @@ SECRET_KEY = 'django-insecure--ycw%u-&zw=1uy95y2^0rcvt8fciahh@n2o960%n0pyz5*amur
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['https://admittedly-massive-teal.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['https://admittedly-massive-teal.ngrok-free.app','https://minaturn-frontend-901361236217.africa-south1.run.app']
 
 
 # Application definition

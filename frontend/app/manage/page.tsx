@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 
 export default function ManageQueuesPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
+  const [, setUser] = useState<User | null>(null)
   const [queues, setQueues] = useState<Queue[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -103,7 +103,7 @@ export default function ManageQueuesPage() {
         let totalMessages = 0
         
         if (result.data?.results) {
-          totalMessages = result.data.results.reduce((sum: number, queueResult: any) => {
+          totalMessages = result.data.results.reduce((sum: number, queueResult: { messages_sent?: string[] }) => {
             return sum + (queueResult.messages_sent?.length || 0)
           }, 0)
         }
@@ -320,7 +320,7 @@ export default function ManageQueuesPage() {
                             <AlertDialogHeader>
                               <AlertDialogTitle className="font-sans">Delete Queue</AlertDialogTitle>
                               <AlertDialogDescription className="text-muted-foreground">
-                                This action cannot be undone. This will permanently delete the queue "{queue.name}" and all its entries.
+                                This action cannot be undone. This will permanently delete the queue &quot;{queue.name}&quot; and all its entries.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

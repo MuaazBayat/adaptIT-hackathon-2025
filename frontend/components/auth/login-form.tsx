@@ -34,7 +34,7 @@ export function LoginForm({ onLogin, onRegister }: LoginFormProps) {
       if (!success) {
         setError(activeTab === 'login' ? 'Invalid credentials' : 'Registration failed')
       }
-    } catch (err) {
+    } catch {
       setError('Something went wrong')
     } finally {
       setLoading(false)

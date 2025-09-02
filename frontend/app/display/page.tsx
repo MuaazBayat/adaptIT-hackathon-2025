@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { queueService, Queue, QueueEntry } from '@/lib/queue-service'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 const REFRESH_INTERVAL = 15000 // 15 seconds
 
-export default function PublicDisplayPage() {
+function PublicDisplayPageContent() {
   const searchParams = useSearchParams()
   const queueId = searchParams.get('queue')
   
@@ -20,19 +20,7 @@ export default function PublicDisplayPage() {
   const [connected, setConnected] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
-  useEffect(() => {
-    if (queueId) {
-      loadQueueData()
-      const interval = setInterval(loadQueueData, REFRESH_INTERVAL)
-      return () => clearInterval(interval)
-    } else {
-      loadAllQueues()
-      const interval = setInterval(loadAllQueues, REFRESH_INTERVAL)
-      return () => clearInterval(interval)
-    }
-  }, [queueId])
-
-  const loadQueueData = async () => {
+  const loadQueueData = useCallback(async () => {
     if (!queueId) return
     
     try {
@@ -52,9 +40,9 @@ export default function PublicDisplayPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [queueId])
 
-  const loadAllQueues = async () => {
+  const loadAllQueues = useCallback(async () => {
     try {
       setConnected(true)
       const queues = await queueService.getAllQueues()
@@ -78,7 +66,19 @@ export default function PublicDisplayPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (queueId) {
+      loadQueueData()
+      const interval = setInterval(loadQueueData, REFRESH_INTERVAL)
+      return () => clearInterval(interval)
+    } else {
+      loadAllQueues()
+      const interval = setInterval(loadAllQueues, REFRESH_INTERVAL)
+      return () => clearInterval(interval)
+    }
+  }, [queueId, loadQueueData, loadAllQueues])
 
   const getStatusInfo = (status: string) => {
     switch (status) {
@@ -256,9 +256,9 @@ export default function PublicDisplayPage() {
                             <div className="text-2xl font-bold font-mono">
                               {entry.msisdn}
                             </div>
-                            {!queueId && (entry as any).queueName && (
+                            {!queueId && (entry as QueueEntry & { queueName?: string }).queueName && (
                               <div className="text-lg text-gray-400">
-                                Queue: {(entry as any).queueName}
+                                Queue: {(entry as QueueEntry & { queueName?: string }).queueName}
                               </div>
                             )}
                             <div className="text-lg text-gray-400">
@@ -319,5 +319,20 @@ export default function PublicDisplayPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PublicDisplayPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <Monitor className="h-16 w-16 mx-auto mb-4 animate-pulse" />
+          <div className="text-2xl font-bold">Loading Display...</div>
+        </div>
+      </div>
+    }>
+      <PublicDisplayPageContent />
+    </Suspense>
   )
 }

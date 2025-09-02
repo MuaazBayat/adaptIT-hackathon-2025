@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
@@ -31,16 +31,7 @@ export default function QueueManagementPage() {
   const [activeEntry, setActiveEntry] = useState<QueueEntry | null>(null)
   const [sendingAlert, setSendingAlert] = useState(false)
 
-  useEffect(() => {
-    const user = authService.getCurrentUser()
-    if (!user) {
-      router.push('/')
-      return
-    }
-    loadQueueData()
-  }, [queueId, router])
-
-  const loadQueueData = async () => {
+  const loadQueueData = useCallback(async () => {
     try {
       const queues = await queueService.getAllQueues()
       const currentQueue = queues.find(q => q.queue_id === queueId)
@@ -56,7 +47,16 @@ export default function QueueManagementPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [queueId, router])
+
+  useEffect(() => {
+    const user = authService.getCurrentUser()
+    if (!user) {
+      router.push('/')
+      return
+    }
+    loadQueueData()
+  }, [queueId, router, loadQueueData])
 
   const handleDragStart = (event: DragStartEvent) => {
     const entry = entries.find(e => e.msisdn === event.active.id)
@@ -136,7 +136,7 @@ export default function QueueManagementPage() {
         let totalMessages = 0
         
         if (result.data?.results) {
-          totalMessages = result.data.results.reduce((sum: number, queueResult: any) => {
+          totalMessages = result.data.results.reduce((sum: number, queueResult: { messages_sent?: string[] }) => {
             return sum + (queueResult.messages_sent?.length || 0)
           }, 0)
         }

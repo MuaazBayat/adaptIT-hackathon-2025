@@ -127,7 +127,7 @@ export default function Home() {
         let totalMessages = 0
         
         if (result.data?.results) {
-          totalMessages = result.data.results.reduce((sum: number, queueResult: any) => {
+          totalMessages = result.data.results.reduce((sum: number, queueResult: { messages_sent?: string[] }) => {
             return sum + (queueResult.messages_sent?.length || 0)
           }, 0)
         }
@@ -339,7 +339,7 @@ export default function Home() {
                         <AlertDialogHeader>
                           <AlertDialogTitle className="font-sans">Delete Queue</AlertDialogTitle>
                           <AlertDialogDescription className="text-muted-foreground">
-                            This action cannot be undone. This will permanently delete the queue "{queue.name}" and all its entries.
+                            This action cannot be undone. This will permanently delete the queue &quot;{queue.name}&quot; and all its entries.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

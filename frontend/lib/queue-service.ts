@@ -155,7 +155,7 @@ class QueueServiceImpl {
     }
   }
 
-  async sendAlert(): Promise<{ success: boolean; data?: any; error?: string }> {
+  async sendAlert(): Promise<{ success: boolean; data?: { queues_processed?: number; results?: { messages_sent?: string[] }[] }; error?: string }> {
     try {
       const response = await this.fetchWithAuth(`${API_BASE}/alert/`, {
         method: 'POST',
